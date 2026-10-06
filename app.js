@@ -19,21 +19,34 @@ mongo.connectToMongoDB()
     .then(() => {
         console.log('MongoDB ready - configuring application sockets...');
 
+        io.use((socket, next) => {
+            const username = socket.handshake.auth.username;
+            if (!username || username.trim() === "") {
+                return next(new Error("Auth failed. Username is required to connect"));
+            }
+            socket.username = username.trim();
+            next();
+        });
+
         io.on('connection', (socket) => {
-            console.log('a user connected');
+            console.log(`${socket.username} connected`);
+            io.emit('user login', `${socket.username} joined the room!`);
 
             socket.on('chat message', async (msg) => {
-                console.log(`message: ${msg}`);
+                console.log(`message: ${msg}, user: ${socket.username}`);
                 
                 try {
                     const db = mongo.getDb();
-                    await db.collection('messages').insertOne({ text: msg });
+                    await db.collection('messages').insertOne({ 
+                        username: socket.username,
+                        text: msg 
+                    });
                     console.log('succeeded in adding message to database');
                 } catch (e) {
                     console.error('Failed to save to db:', e);
                 }
-                
-                io.emit('chat message', msg);
+                console.log(socket.username + msg);
+                io.emit('chat message', { username: socket.username, text: msg });
             });
 
             socket.on('disconnect', () => {
@@ -49,22 +62,3 @@ mongo.connectToMongoDB()
         console.error('Critical database initialization failure. App closing.', err);
         process.exit(1); 
     });
-
-function handleShutdown(signal) {
-    console.log(`\nReceived ${signal}. Shutting down gracefully...`);
-    
-    server.close(async () => {
-        console.log("HTTP server closed.");
-        try {
-            await mongo.disconnectFromMongoDB();
-            console.log("Cleanup complete. Goodbye!");
-            process.exit(0);
-        } catch (err) {
-            console.error("Error closing MongoDB cleanly:", err);
-            process.exit(1);
-        }
-    });
-}
-
-process.on('SIGINT', () => handleShutdown('SIGINT'));
-process.on('SIGTERM', () => handleShutdown('SIGTERM'));
