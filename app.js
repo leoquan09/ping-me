@@ -49,7 +49,6 @@ mongo.connectToMongoDB()
                 const db = mongo.getDb();
                 const messages = await db.collection('messages')
                             .find({}, { projection: { _id: 0 } })
-                            .limit(100)
                             .toArray();
 
                 messages.forEach((msg) => {
