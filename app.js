@@ -28,9 +28,36 @@ mongo.connectToMongoDB()
             next();
         });
 
-        io.on('connection', (socket) => {
+        io.on('connection', async (socket) => {
+            try {
+                const db = mongo.getDb();
+                await db.collection('messages').insertOne({ 
+                    username: "System",
+                    text: `${socket.username} has joined the chat.`
+                });
+                console.log('succeeded in adding message to database');
+            } catch (e) {
+                console.error('Failed to save to db:', e);
+            }
+
             console.log(`${socket.username} connected`);
-            io.emit('user login', `${socket.username} joined the room!`);
+            io.emit('user login', `System: ${socket.username} joined the chat.`);
+
+            try {
+                const db = mongo.getDb();
+                const messages = await db.collection('messages')
+                            .find({}, { projection: { _id: 0 } })
+                            .limit(100)
+                            .toArray();
+
+                messages.forEach((msg) => {
+                    socket.emit('chat message', msg);
+                });
+                
+                console.log(`Loaded ${messages.length} historical messages.`);
+            } catch (err) {
+                console.error('Error loading messages from database:', err);
+            }
 
             socket.on('chat message', async (msg) => {
                 console.log(`message: ${msg}, user: ${socket.username}`);
@@ -49,7 +76,19 @@ mongo.connectToMongoDB()
                 io.emit('chat message', { username: socket.username, text: msg });
             });
 
-            socket.on('disconnect', () => {
+            socket.on('disconnect', async () => {
+                try {
+                    const db = mongo.getDb();
+                    await db.collection('messages').insertOne({ 
+                        username: "System",
+                        text: `${socket.username} has left the chat.`
+                    });
+                    console.log('succeeded in adding message to database');
+                } catch (e) {
+                    console.error('Failed to save to db:', e);
+                }
+
+                io.emit('user login', `System: ${socket.username} has left the chat.`)
                 console.log('a user disconnected');
             });
         });
