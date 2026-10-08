@@ -24,7 +24,7 @@
     <script>
       let username = localStorage.getItem('chat_username');
 
-      while (!username || username.trim() === "") {
+      while (!username || username.trim() === "" || username.trim().toLowerCase() === "system") {
         username = prompt("Please enter a username. It's permanent so choose wisely");
         if (username && username.trim() !== "") {
           localStorage.setItem('chat_username', username.trim());

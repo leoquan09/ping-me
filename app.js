@@ -23,7 +23,7 @@ mongo.connectToMongoDB()
 
         io.use((socket, next) => {
             const username = socket.handshake.auth.username;
-            if (!username || username.trim() === "") {
+            if (!username || username.trim() === "" || username.trim().toLowerCase() === "system") {
                 return next(new Error("Auth failed. Username is required to connect"));
             }
             socket.username = username.trim();
