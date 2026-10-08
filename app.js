@@ -43,7 +43,7 @@ mongo.connectToMongoDB()
             }
 
             console.log(`${socket.username} connected`);
-            io.emit('user login', `System: ${socket.username} joined the chat.`);
+            io.emit('user login', `System-Alert ||| ${socket.username} joined the chat.`);
 
             try {
                 const db = mongo.getDb();
